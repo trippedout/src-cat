@@ -18,15 +18,19 @@ is_text_file() {
 }
 
 process_files() {
-    for file in "$1"/*
-    do
+    
+    for file in "$1"/*; do
         if [ -d "$file" ]; then
-            # If the item is a directory, recursively process its contents
             process_files "$file"
         elif [ -f "$file" ] && is_text_file "$file"; then
-            # If the item is a file and contains text, append its contents to the output file
+            local_path=$(echo "$file" | sed -e "s|$temp_dir/||")
+            # better for claude, separate input from actual instructions
+            echo "<document>" >> "$output_file"
+            echo "<path>$local_path</path>" >> "$output_file"
+            echo "<source>" >> "$output_file"
             cat "$file" >> "$output_file"
-            echo >> "$output_file"  # Add a newline after each file
+            echo "</source>" >> "$output_file"
+            echo "</document>" >> "$output_file"
         fi
     done
 }
@@ -58,13 +62,13 @@ git clone "$repo_url.git" "$temp_dir"
 # Remove the output file if it already exists
 rm -f "$output_file"
 
-# Set the output file's MIME type to text/plain
-echo "" > "$output_file"
-# file -m "$output_file" > /dev/null
-
 # Start processing files recursively from the target path within the cloned repository
 echo "processing $temp_dir/$target_path"
+
+echo "<documents>" >> "$output_file"
 process_files "$temp_dir/$target_path"
+echo "</documents>" >> "$output_file"
+echo >> "$output_file"
 
 # Remove the temporary directory
 rm -rf "$temp_dir"
